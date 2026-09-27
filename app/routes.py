@@ -16,21 +16,11 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "app", "templates")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 
-
-
-# ------------------------------------------------------------------
-# 1. Home route — displays the user input form
-# ------------------------------------------------------------------
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html", {})
 
 
-# ------------------------------------------------------------------
-# 2. /generate-workout — Plan Generator
-#    Receives form input, calls Gemini Pro (workout) + Gemini Flash (tip),
-#    stores user + plan, renders result.html
-# ------------------------------------------------------------------
 @router.post("/generate-workout", response_class=HTMLResponse)
 def generate_workout(
     request: Request,
@@ -41,7 +31,6 @@ def generate_workout(
     goal: str = Form(...),
     intensity: str = Form(...),
 ):
-    # Save user details
     save_user(
         user_id=user_id,
         name=username,
@@ -51,17 +40,11 @@ def generate_workout(
         intensity=intensity,
     )
 
-    # Generate workout plan via Gemini 1.5 Pro
     plan = generate_workout_gemini({"goal": goal, "intensity": intensity})
-
-    # Generate nutrition tip via Gemini Flash
     nutrition_tip = generate_nutrition_tip_with_flash(goal)
-
-    # Save the generated plan
     save_plan(user_id, plan)
 
-    return templates.TemplateResponse("result.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "result.html", {
         "username": username,
         "user_id": user_id,
         "age": age,
@@ -73,11 +56,6 @@ def generate_workout(
     })
 
 
-# ------------------------------------------------------------------
-# 3. /submit-feedback — Update Plan with Feedback
-#    Retrieves original plan, sends original + feedback to Gemini Pro,
-#    stores updated plan, renders result.html
-# ------------------------------------------------------------------
 @router.post("/submit-feedback", response_class=HTMLResponse)
 def submit_feedback(
     request: Request,
@@ -87,16 +65,14 @@ def submit_feedback(
     original = get_original_plan(user_id)
 
     if not original:
-        return templates.TemplateResponse("result.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "result.html", {
             "error": "Original plan not found for this user.",
         })
 
     updated = update_workout_plan(original, feedback)
     update_plan(user_id, updated)
 
-    return templates.TemplateResponse("result.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "result.html", {
         "user_id": user_id,
         "workout_plan": original,
         "updated_plan": updated,
@@ -104,10 +80,6 @@ def submit_feedback(
     })
 
 
-# ------------------------------------------------------------------
-# 4. /view-all-users — Admin dashboard
-#    Displays all users and their original/updated plans
-# ------------------------------------------------------------------
 @router.get("/view-all-users", response_class=HTMLResponse)
 def view_all_users(request: Request):
     users = get_all_users()
@@ -128,7 +100,6 @@ def view_all_users(request: Request):
             "updated_plan": plan.updated_plan if plan and plan.updated_plan else "Not updated",
         })
 
-    return templates.TemplateResponse("all_users.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "all_users.html", {
         "users": user_data,
     })
